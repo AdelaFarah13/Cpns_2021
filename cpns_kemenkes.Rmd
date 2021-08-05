@@ -1,0 +1,222 @@
+---
+title: "Kemenkes"
+author: "Adela Farah Aglia"
+date: "8/4/2021"
+output: html_document
+---
+
+```{r Mengimport library}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(tidyverse)
+library(ggplot2)
+```
+
+
+```{r Membaca data}
+df_kemenkes <- read.csv("https://raw.githubusercontent.com/AdelaFarah13/Cpns_2021/main/Data/PELAMAR_CPNS_Kemenkes.csv", sep=";")
+
+df_wilayah <- read.csv("https://raw.githubusercontent.com/AdelaFarah13/Cpns_2021/main/Data/kode_wilayah.csv", sep=";")
+
+```
+```{r Melihat data}
+head(df_kemenkes)
+head(df_wilayah)
+
+```
+## Mengubah Nama Kolom
+```{r mengubah nama kolom df_kemenkes}
+
+colnames(df_kemenkes) <- c("No", "No_Registrasi", "Nama", "Jabatan", "Jenis_kebutuhan","kosong")
+
+df_kemenkes
+```
+```{r Drop Kolom}
+df_kemenkes <- subset(df_kemenkes, select = -c(No, kosong)) #Drop kolom no dan kosong
+df_kemenkes
+
+df_wilayah <- subset(df_wilayah, select= -c(ï..ID)) #Drop kolom ID
+df_wilayah
+```
+```{r Membuat dataframe baru khusus kode Provinsi}
+df_wilay_prov <- df_wilayah %>%
+                  filter(STATUS_ADM == 'PROV') %>%
+                  subset
+
+# Mengubah tipe data KD Provinsi sebagai karakter
+df_wilay_prov$KD_PROV <- as.character(df_wilay_prov$KD_PROV)
+```
+
+
+```{r Membersihkan data}
+# Menghapus kolom 1,2 & akhir
+df_kemenkes <- df_kemenkes[-c(1:2),]
+df_kemenkes <- head(df_kemenkes, -1)
+
+rownames(df_kemenkes) <- NULL
+
+head(df_kemenkes)
+```
+
+```{r Menghapus data yang duplikat}
+
+df_kemenkes <- df_kemenkes %>% 
+               distinct()
+```
+
+```{r Melihat nilai Unique dari kolom Jabatan}
+unique(df_kemenkes$Jabatan)
+```
+```{r Menghilangkan (.) dan (\n) dari kolom jabatan}
+
+df_kemenkes$Jabatan <- str_remove_all(df_kemenkes$Jabatan, "\\.")
+
+#df_kemenkes$Jabatan <- str_remove_all(df_kemenkes$Jabatan,  "\\n", '')
+
+df_kemenkes$Jabatan <- gsub('[\n]', ' ', df_kemenkes$Jabatan)
+```
+
+
+```{r}
+unique(df_kemenkes$Jabatan)
+```
+```{r Memanipulasi nomor registrasi}
+df_kemenkes$No_Registrasi <- stringi::stri_reverse(df_kemenkes$No_Registrasi)
+```
+
+```{r Mengambil 2 nilai awal nomor_registrasi}
+df_kemenkes$KD_PROV <-
+substr(df_kemenkes$No_Registrasi, 1, 2)
+
+```
+
+```{r Total seluruh peserta lolos administrasi}
+df_kemenkes %>% 
+  summarise(Total_Pelamar = n(), Persentase_lolos = Total_Pelamar/46822*100) 
+```
+# Melihat total pelamar berdasarkan posisi Jabatan yang diambil
+```{r}
+df_kemenkes %>% 
+  group_by(Jabatan, Jenis_kebutuhan) %>%
+  summarise(Total_Pelamar = n()) %>%
+  arrange(desc(Total_Pelamar))
+```
+# TOTAL PELAMAR BERDASARKAN Jenis Kebutuhan
+```{r}
+df_kemenkes %>% 
+  group_by(Jenis_kebutuhan) %>%
+  summarise(Total_Pelamar = n()) %>%
+  arrange(desc(Total_Pelamar))
+```
+# Total Pelamar Jabatan Ahli Pertama - Pranata Komputer berdasarkan Provinsi Jenis kebutuhan Umum
+```{r}
+df_kemenkes %>%
+  left_join(df_wilay_prov, by=c("KD_PROV"="KD_PROV")) %>%
+  filter(Jabatan == "AHLI PERTAMA - PRANATA KOMPUTER", Jenis_kebutuhan =="UMUM") %>%
+  group_by(NAMA) %>%
+  summarise(Total_pelamar = n()) %>%
+  arrange(desc(Total_pelamar))
+
+```
+
+```{r Membuat data baru}
+data_pranata_komputer1 <- df_kemenkes %>%
+  left_join(df_wilay_prov, by=c("KD_PROV"="KD_PROV")) %>%
+  filter(Jabatan == "AHLI PERTAMA - PRANATA KOMPUTER", Jenis_kebutuhan =="UMUM") %>%
+  group_by(NAMA) %>%
+  summarise(Total_pelamar = n()) %>%
+  arrange(desc(Total_pelamar)) %>%
+  head(10)
+
+data_pranata_komputer2 <- df_kemenkes %>%
+  left_join(df_wilay_prov, by=c("KD_PROV"="KD_PROV")) %>%
+  filter(Jabatan == "AHLI PERTAMA - PRANATA KOMPUTER", Jenis_kebutuhan =="UMUM") %>%
+  group_by(NAMA) %>%
+  summarise(Total_pelamar = n()) %>%
+  arrange(desc(Total_pelamar)) %>%
+  tail(10)
+```
+
+```{r Pelamar terbanyak & tersedikit untuk pranata komputer di INDONESIA}
+
+data_pranata_komputer1 %>% 
+  ggplot(aes(x= reorder(NAMA, -Total_pelamar), y=Total_pelamar, fill=reorder(NAMA, -Total_pelamar)))+
+  geom_bar (stat ="identity")+
+  geom_text(aes(label = Total_pelamar), size=3, vjust = .1)+
+  labs(title="TOP 10 JUMLAH PELAMAR TERBANYAK JABATAN PRANATA KOMPUTER DI KEMENTERIAN KESEHATAN PADA SELEKSI CPNS 2021 ", 
+  subtitle = "Formasi UMUM",
+  caption= "Data Source: casn.kemkes.go.id/",
+  x= "PROVINSI", 
+  y="JUMLAH PELAMAR")+
+  scale_fill_discrete(name="Nama Provinsi")+
+  theme(
+        plot.title = element_text(size=7, face="bold.italic"),
+        plot.subtitle = element_text(size= 5),
+        plot.caption.position = "plot",
+        axis.title.x = element_text( size =10),
+        axis.title.y = element_text( size =10),
+        axis.text.x = element_text(size =5, angle = 45, hjust = 1, face = "bold"),
+        legend.text=element_text(size=5),
+        legend.title = element_text(size=7)
+        )
+  
+
+data_pranata_komputer2 %>% 
+  ggplot(aes(x= reorder(NAMA, +Total_pelamar), y=Total_pelamar, fill= reorder(NAMA, +Total_pelamar)))+
+  geom_bar (stat ="identity")+
+  geom_text(aes(label = Total_pelamar), size=3, vjust = .1)+
+  labs(title="TOP 10 JUMLAH PELAMAR JABATAN PRANATA KOMPUTER DI KEMENTERIAN KESEHATAN PADA SELEKSI CPNS 2021 ", 
+  subtitle = "Formasi UMUM",
+   caption= "Data Source: casn.kemkes.go.id/",
+   x= "PROVINSI", 
+   y="JUMLAH PELAMAR")+
+  scale_fill_discrete(name="Nama Provinsi")+
+  theme(
+        plot.title = element_text(size=8, face="bold.italic"),
+        plot.subtitle = element_text(size= 5),
+        plot.caption.position = "plot",
+        axis.title.x = element_blank(),
+        axis.title.y = element_text( size =10),
+        axis.text.x = element_text(size =5, angle = 45, hjust = 1, face = "bold"),
+        legend.text=element_text(size=5),
+        legend.title = element_text(size=7)
+        )
+  
+```
+
+```{r Visualisasi Jabatan Terbanyak}
+data_jabatan_banyak <- df_kemenkes %>% 
+                    group_by(Jabatan) %>%
+                    summarise(Total_pelamar = n()) %>%
+                    arrange(desc(Total_pelamar)) %>%
+                    head(10)
+
+old.par <- par(bg=NA)
+
+data_jabatan_banyak %>% 
+  ggplot(aes(x= reorder(Jabatan, -Total_pelamar), y=Total_pelamar, fill= reorder(Jabatan, -Total_pelamar)))+
+  geom_bar (stat ="identity")+
+  geom_text(aes(label = Total_pelamar), size=4, vjust = .1)+
+  labs(title="TOP 10 JUMLAH PELAMAR JABATAN TERBANYAK DI KEMENTERIAN KESEHATAN PADA SELEKSI CPNS 2021 ", subtitle = "Formasi UMUM",
+   caption= "Data Source: casn.kemkes.go.id/",
+   x= "JABATAN", 
+   y="JUMLAH PELAMAR")+
+  scale_fill_discrete(name="JABATAN")+
+  theme(
+        plot.title = element_text(size=8, face="bold.italic"),
+        plot.subtitle = element_text(size= 5),
+        plot.caption.position = "plot",
+        axis.title.x = element_text( size =10),
+        axis.title.y = element_text( size =10),
+        axis.text.x = element_blank(),
+        legend.key.size = unit(0.2, "cm"),
+        legend.text=element_text(size=5),
+        legend.title = element_text(size=7),
+        legend.position = c(.95, .95),
+        legend.justification = c("right", "top"),
+        legend.box.just = "right",
+        legend.margin = margin(6, 6, 6, 6)
+        )
+```
+
