@@ -7,19 +7,19 @@ output: html_document
 
 ```{r Mengimport library}
 library(dplyr)
-library(tidyr)
 library(stringr)
 library(tidyverse)
-library(ggplot2)
+library(lubridate)
 ```
 
 
-```{r Membaca data}
+```{r Import data}
 df_kemenkes <- read.csv("https://raw.githubusercontent.com/AdelaFarah13/Cpns_2021/main/Data/PELAMAR_CPNS_Kemenkes.csv", sep=";")
 
 df_wilayah <- read.csv("https://raw.githubusercontent.com/AdelaFarah13/Cpns_2021/main/Data/kode_wilayah.csv", sep=";")
 
 ```
+
 ```{r Melihat data}
 head(df_kemenkes)
 head(df_wilayah)
@@ -90,6 +90,17 @@ df_kemenkes$KD_PROV <-
 substr(df_kemenkes$No_Registrasi, 1, 2)
 
 ```
+
+```{r Mebuat kolom Tahun}
+
+df_kemenkes$Thn_lahir <- substr(df_kemenkes$No_Registrasi, 11, 12)
+
+df_kemenkes$Thn_lahir <- as.Date(paste(df_kemenkes$Thn_lahir, df_kemenkes$Thn_lahir, sep= ""), format="%y")
+
+df_kemenkes$Thn_lahir <- year(df_kemenkes$Thn_lahir)
+
+```
+
 
 ```{r Total seluruh peserta lolos administrasi}
 df_kemenkes %>% 
@@ -218,5 +229,53 @@ data_jabatan_banyak %>%
         legend.box.just = "right",
         legend.margin = margin(6, 6, 6, 6)
         )
+```
+```{r}
+year_now <- c(as.integer(format(Sys.Date(), "%Y")))
+
+year_now
+```
+
+```{r umur peserta}
+df_kemenkes$age <- year_now - df_kemenkes$Thn_lahir
+```
+
+
+
+```{r}
+data_umur<- df_kemenkes %>%
+  left_join(df_wilay_prov, by=c("KD_PROV"="KD_PROV")) %>%
+  filter(Jabatan == "AHLI PERTAMA - PRANATA KOMPUTER", Jenis_kebutuhan =="UMUM", NAMA == "SUMATERA SELATAN")
+  
+
+
+data_umur %>%
+   group_by(age)%>%
+   summarise(count=n())
+```
+
+```{r}
+data_umur %>%
+  ggplot(aes(x= age))+
+  geom_histogram(breaks = seq(23, 34, by=1),
+                 stat= "count",
+                 col="#33CCCC",
+                 aes(fill=..count..)
+                 )+
+  labs(title="Distribusi Umur pelamar CPNS 2021 jabatan 'Ahli Pertama- Pranata Komputer' di SUMSEL",         subtitle = "Formasi UMUM - Kementerian Kesehatan",
+       caption= "Data Source: casn.kemkes.go.id/",
+       x="Umur")+
+#mengatur scale
+scale_x_continuous(breaks = seq(23, 34, by=1))+
+scale_y_continuous(breaks = seq(0, 20, by= 2))+
+scale_fill_gradient("count", low = "#33CCCC", high="#336666")+
+
+#mengatur theme
+  theme(
+        plot.title = element_text(size=10, face="bold.italic"),
+        plot.subtitle = element_text(size= 8),
+        plot.caption.position = "plot"
+        )
+
 ```
 
