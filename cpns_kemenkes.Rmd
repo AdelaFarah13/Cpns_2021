@@ -39,42 +39,48 @@ df_kemenkes
 df_wilayah <- subset(df_wilayah, select= -c(ï..ID)) #Drop kolom ID
 df_wilayah
 ```
+```{r Drop Row}
+# Menghapus kolom 1,2 & akhir
+df_kemenkes <- df_kemenkes[-c(1:2),]
+df_kemenkes <- df_kemenkes[-which(df_kemenkes$Jenis_kebutuhan == ""), ]
+
+rownames(df_kemenkes) <- NULL
+
+head(df_kemenkes)
+
+```
+
 ```{r Membuat dataframe baru khusus kode Provinsi}
 df_wilay_prov <- df_wilayah %>%
                   filter(STATUS_ADM == 'PROV') %>%
-                  subset
+                  subset(select= -c(KD_KAB, KD_KEC, KD_DESA))
 
 # Mengubah tipe data KD Provinsi sebagai karakter
 df_wilay_prov$KD_PROV <- as.character(df_wilay_prov$KD_PROV)
 ```
 
 
-```{r Membersihkan data}
-# Menghapus kolom 1,2 & akhir
-df_kemenkes <- df_kemenkes[-c(1:2),]
-df_kemenkes <- head(df_kemenkes, -1)
+```{r Mengecek data yang duplikat}
 
-rownames(df_kemenkes) <- NULL
-
-head(df_kemenkes)
-```
-
-```{r Menghapus data yang duplikat}
-
-df_kemenkes <- df_kemenkes %>% 
-               distinct()
+df_kemenkes %>%  distinct()
 ```
 
 ```{r Melihat nilai Unique dari kolom Jabatan}
 unique(df_kemenkes$Jabatan)
 ```
+
 ```{r Menghilangkan (.) dan (\n) dari kolom jabatan}
 
 df_kemenkes$Jabatan <- str_remove_all(df_kemenkes$Jabatan, "\\.")
 
-#df_kemenkes$Jabatan <- str_remove_all(df_kemenkes$Jabatan,  "\\n", '')
+df_kemenkes$Jabatan <- str_replace_all(df_kemenkes$Jabatan,'[\\n]', '')
 
-df_kemenkes$Jabatan <- gsub('[\n]', ' ', df_kemenkes$Jabatan)
+# Memakai fungsi bawaan dari R
+#df_kemenkes$Jabatan <- gsub('[\n]', ' ', df_kemenkes$Jabatan)
+```
+```{r}
+#df_kemenkes$Jenis_kebutuhan <- gsub('[\n/]', "\\s+", df_kemenkes$Jenis_kebutuhan)
+df_kemenkes$Jenis_kebutuhan <- str_replace_all(df_kemenkes$Jenis_kebutuhan, '[\n/]', ' ')
 ```
 
 
@@ -104,7 +110,7 @@ df_kemenkes$Thn_lahir <- year(df_kemenkes$Thn_lahir)
 
 ```{r Total seluruh peserta lolos administrasi}
 df_kemenkes %>% 
-  summarise(Total_Pelamar = n(), Persentase_lolos = Total_Pelamar/46822*100) 
+  summarise(Total_Pelamar_Lolos = n(), Persentase_lolos = Total_Pelamar_Lolos/46822*100) 
 ```
 # Melihat total pelamar berdasarkan posisi Jabatan yang diambil
 ```{r}
@@ -120,6 +126,8 @@ df_kemenkes %>%
   summarise(Total_Pelamar = n()) %>%
   arrange(desc(Total_Pelamar))
 ```
+
+
 # Total Pelamar Jabatan Ahli Pertama - Pranata Komputer berdasarkan Provinsi Jenis kebutuhan Umum
 ```{r}
 df_kemenkes %>%
@@ -177,7 +185,7 @@ data_pranata_komputer2 %>%
   ggplot(aes(x= reorder(NAMA, +Total_pelamar), y=Total_pelamar, fill= reorder(NAMA, +Total_pelamar)))+
   geom_bar (stat ="identity")+
   geom_text(aes(label = Total_pelamar), size=3, vjust = .1)+
-  labs(title="TOP 10 JUMLAH PELAMAR JABATAN PRANATA KOMPUTER DI KEMENTERIAN KESEHATAN PADA SELEKSI CPNS 2021 ", 
+  labs(title="TOP 10 TERBAWAH JUMLAH PELAMAR JABATAN PRANATA KOMPUTER DI KEMENTERIAN KESEHATAN PADA SELEKSI CPNS 2021 ", 
   subtitle = "Formasi UMUM",
    caption= "Data Source: casn.kemkes.go.id/",
    x= "PROVINSI", 
@@ -230,6 +238,7 @@ data_jabatan_banyak %>%
         legend.margin = margin(6, 6, 6, 6)
         )
 ```
+
 ```{r}
 year_now <- c(as.integer(format(Sys.Date(), "%Y")))
 
@@ -278,4 +287,3 @@ scale_fill_gradient("count", low = "#33CCCC", high="#336666")+
         )
 
 ```
-
